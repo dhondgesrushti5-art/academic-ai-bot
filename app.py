@@ -3,6 +3,9 @@ import pypdf
 from google import genai
 from google.genai import types
 
+# Global model definition
+MODEL_NAME = 'gemini-2.5-flash'
+
 # Page Configuration
 st.set_page_config(page_title="Academic AI Assistant", page_icon="🎓", layout="wide")
 
@@ -49,17 +52,20 @@ if api_key:
                 If the answer cannot be found in the text, inform the user clearly.
                 
                 Context:
-                {pdf_text[:10000]}  # Processing initial text segment
+                {pdf_text[:10000]}
                 
                 Question: {user_question}
                 """
                 with st.spinner("Analyzing document..."):
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                    )
-                    st.markdown("### Answer:")
-                    st.write(response.text)
+                    try:
+                        response = client.models.generate_content(
+                            model=MODEL_NAME,
+                            contents=prompt,
+                        )
+                        st.markdown("### Answer:")
+                        st.write(response.text)
+                    except Exception as e:
+                        st.error(f"API Error: {str(e)}")
 
     # TAB 2: Study Planner
     with tab2:
@@ -72,11 +78,14 @@ if api_key:
             if subject:
                 prompt = f"Create a detailed day-by-day study timetable for {subject} spanning {days} days, with {hours} hours of study per day. Format as structured Markdown."
                 with st.spinner("Creating schedule..."):
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                    )
-                    st.markdown(response.text)
+                    try:
+                        response = client.models.generate_content(
+                            model=MODEL_NAME,
+                            contents=prompt,
+                        )
+                        st.markdown(response.text)
+                    except Exception as e:
+                        st.error(f"API Error: {str(e)}")
             else:
                 st.warning("Please specify a subject.")
 
@@ -90,11 +99,14 @@ if api_key:
             if topic:
                 prompt = f"Generate a {num_questions}-question multiple-choice quiz on '{topic}'. Include 4 choices per question and provide the correct answer key with short explanations at the end."
                 with st.spinner("Generating quiz..."):
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                    )
-                    st.markdown(response.text)
+                    try:
+                        response = client.models.generate_content(
+                            model=MODEL_NAME,
+                            contents=prompt,
+                        )
+                        st.markdown(response.text)
+                    except Exception as e:
+                        st.error(f"API Error: {str(e)}")
             else:
                 st.warning("Please specify a topic.")
 else:
