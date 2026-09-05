@@ -4,7 +4,7 @@ import time
 from google import genai
 from google.genai import types
 
-# Global model definition
+# Updated active model
 MODEL_NAME = 'gemini-3.6-flash'
 
 # Page Configuration
@@ -30,9 +30,8 @@ def extract_text_from_pdf(pdf_file):
             extracted_text += text + "\n"
     return extracted_text
 
-# Helper function for API calls with automatic retry on 503 errors
-def generate_content_with_retry(client, prompt):
-    max_retries = 3
+# Helper function to call the Gemini API with automatic retries for 503 errors
+def generate_content_with_retry(client, prompt, max_retries=3):
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
@@ -42,7 +41,7 @@ def generate_content_with_retry(client, prompt):
             return response.text
         except Exception as e:
             if "503" in str(e) and attempt < max_retries - 1:
-                time.sleep(2 * (attempt + 1))  # Wait 2s, then 4s before retrying
+                time.sleep(2 * (attempt + 1))  # Exponential backoff delay
                 continue
             raise e
 
@@ -75,11 +74,11 @@ if api_key:
                 """
                 with st.spinner("Analyzing document..."):
                     try:
-                        result = generate_content_with_retry(client, prompt)
+                        answer = generate_content_with_retry(client, prompt)
                         st.markdown("### Answer:")
-                        st.write(result)
+                        st.write(answer)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please try clicking submit again in a few seconds.")
+                        st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
 
     # TAB 2: Study Planner
     with tab2:
@@ -93,8 +92,8 @@ if api_key:
                 prompt = f"Create a detailed day-by-day study timetable for {subject} spanning {days} days, with {hours} hours of study per day. Format as structured Markdown."
                 with st.spinner("Creating schedule..."):
                     try:
-                        result = generate_content_with_retry(client, prompt)
-                        st.markdown(result)
+                        plan = generate_content_with_retry(client, prompt)
+                        st.markdown(plan)
                     except Exception as e:
                         st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
             else:
@@ -111,8 +110,8 @@ if api_key:
                 prompt = f"Generate a {num_questions}-question multiple-choice quiz on '{topic}'. Include 4 choices per question and provide the correct answer key with short explanations at the end."
                 with st.spinner("Generating quiz..."):
                     try:
-                        result = generate_content_with_retry(client, prompt)
-                        st.markdown(result)
+                        quiz = generate_content_with_retry(client, prompt)
+                        st.markdown(quiz)
                     except Exception as e:
                         st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
             else:
