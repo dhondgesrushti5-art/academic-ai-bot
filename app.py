@@ -4,8 +4,8 @@ import time
 from google import genai
 from google.genai import types
 
-# Active supported Gemini model
-MODEL_NAME = 'gemini-3.6-flash'
+# High-throughput stable model name
+MODEL_NAME = 'gemini-2.0-flash'
 
 # Page Configuration
 st.set_page_config(page_title="Academic AI Assistant", page_icon="🎓", layout="wide")
@@ -30,8 +30,8 @@ def extract_text_from_pdf(pdf_file):
             extracted_text += text + "\n"
     return extracted_text
 
-# Helper function to call the Gemini API with automatic retries for 503 errors
-def generate_content_with_retry(client, prompt, max_retries=3):
+# Enhanced helper function with 5 retries and longer backoff delays
+def generate_content_with_retry(client, prompt, max_retries=5):
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
@@ -40,8 +40,9 @@ def generate_content_with_retry(client, prompt, max_retries=3):
             )
             return response.text
         except Exception as e:
-            if "503" in str(e) and attempt < max_retries - 1:
-                time.sleep(2 * (attempt + 1))  # Exponential backoff delay (2s, 4s...)
+            # Catch 503 capacity errors or general API overload errors
+            if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
+                time.sleep(3 * (attempt + 1))  # Progressive waits: 3s, 6s, 9s, 12s
                 continue
             raise e
 
@@ -78,7 +79,7 @@ if api_key:
                         st.markdown("### Answer:")
                         st.write(answer)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please try clicking submit again in a few seconds.")
+                        st.error("The Gemini server is experiencing high demand right now. Please wait a few seconds and try clicking submit again.")
 
     # TAB 2: Study Planner
     with tab2:
@@ -95,7 +96,7 @@ if api_key:
                         plan = generate_content_with_retry(client, prompt)
                         st.markdown(plan)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
+                        st.error("The Gemini server is experiencing high demand right now. Please wait a few seconds and try clicking again.")
             else:
                 st.warning("Please specify a subject.")
 
@@ -113,7 +114,7 @@ if api_key:
                         quiz = generate_content_with_retry(client, prompt)
                         st.markdown(quiz)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
+                        st.error("The Gemini server is experiencing high demand right now. Please wait a few seconds and try clicking again.")
             else:
                 st.warning("Please specify a topic.")
 else:
