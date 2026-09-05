@@ -4,7 +4,7 @@ import time
 from google import genai
 from google.genai import types
 
-# Updated active model
+# Active supported Gemini model
 MODEL_NAME = 'gemini-3.6-flash'
 
 # Page Configuration
@@ -41,7 +41,7 @@ def generate_content_with_retry(client, prompt, max_retries=3):
             return response.text
         except Exception as e:
             if "503" in str(e) and attempt < max_retries - 1:
-                time.sleep(2 * (attempt + 1))  # Exponential backoff delay
+                time.sleep(2 * (attempt + 1))  # Exponential backoff delay (2s, 4s...)
                 continue
             raise e
 
@@ -78,7 +78,7 @@ if api_key:
                         st.markdown("### Answer:")
                         st.write(answer)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
+                        st.error("The Gemini server is experiencing high demand right now. Please try clicking submit again in a few seconds.")
 
     # TAB 2: Study Planner
     with tab2:
