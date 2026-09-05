@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 
 # Global model definition
-MODEL_NAME = 'gemini-2.5-flash'
+MODEL_NAME = 'gemini-3.6-flash'
 
 # Page Configuration
 st.set_page_config(page_title="Academic AI Assistant", page_icon="🎓", layout="wide")
