@@ -1,5 +1,6 @@
 import streamlit as st
 import pypdf
+import time
 from google import genai
 from google.genai import types
 
@@ -28,6 +29,22 @@ def extract_text_from_pdf(pdf_file):
         if text:
             extracted_text += text + "\n"
     return extracted_text
+
+# Helper function for API calls with automatic retry on 503 errors
+def generate_content_with_retry(client, prompt):
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            if "503" in str(e) and attempt < max_retries - 1:
+                time.sleep(2 * (attempt + 1))  # Wait 2s, then 4s before retrying
+                continue
+            raise e
 
 # Main App Logic
 if api_key:
@@ -58,14 +75,11 @@ if api_key:
                 """
                 with st.spinner("Analyzing document..."):
                     try:
-                        response = client.models.generate_content(
-                            model=MODEL_NAME,
-                            contents=prompt,
-                        )
+                        result = generate_content_with_retry(client, prompt)
                         st.markdown("### Answer:")
-                        st.write(response.text)
+                        st.write(result)
                     except Exception as e:
-                        st.error(f"API Error: {str(e)}")
+                        st.error("The Gemini server is experiencing high demand right now. Please try clicking submit again in a few seconds.")
 
     # TAB 2: Study Planner
     with tab2:
@@ -79,13 +93,10 @@ if api_key:
                 prompt = f"Create a detailed day-by-day study timetable for {subject} spanning {days} days, with {hours} hours of study per day. Format as structured Markdown."
                 with st.spinner("Creating schedule..."):
                     try:
-                        response = client.models.generate_content(
-                            model=MODEL_NAME,
-                            contents=prompt,
-                        )
-                        st.markdown(response.text)
+                        result = generate_content_with_retry(client, prompt)
+                        st.markdown(result)
                     except Exception as e:
-                        st.error(f"API Error: {str(e)}")
+                        st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
             else:
                 st.warning("Please specify a subject.")
 
@@ -100,13 +111,10 @@ if api_key:
                 prompt = f"Generate a {num_questions}-question multiple-choice quiz on '{topic}'. Include 4 choices per question and provide the correct answer key with short explanations at the end."
                 with st.spinner("Generating quiz..."):
                     try:
-                        response = client.models.generate_content(
-                            model=MODEL_NAME,
-                            contents=prompt,
-                        )
-                        st.markdown(response.text)
+                        result = generate_content_with_retry(client, prompt)
+                        st.markdown(result)
                     except Exception as e:
-                        st.error(f"API Error: {str(e)}")
+                        st.error("The Gemini server is experiencing high demand right now. Please try again in a few seconds.")
             else:
                 st.warning("Please specify a topic.")
 else:
