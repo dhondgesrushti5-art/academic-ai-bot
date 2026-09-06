@@ -4,8 +4,8 @@ import time
 from google import genai
 from google.genai import types
 
-# Priority chain of models with independent capacity pools
-FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
+# Active models with independent capacity pools
+FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash']
 
 # Page Configuration
 st.set_page_config(page_title="Academic AI Assistant", page_icon="🎓", layout="wide")
@@ -13,7 +13,7 @@ st.set_page_config(page_title="Academic AI Assistant", page_icon="🎓", layout=
 st.title("🎓 Academic AI Assistant")
 st.write("Upload study materials, ask questions, or generate study plans and quizzes!")
 
-# Sidebar - API Key Input
+# Sidebar - API Key Configuration
 with st.sidebar:
     st.header("⚙️ Configuration")
     api_key = st.text_input("Enter Gemini API Key:", type="password")
@@ -30,12 +30,8 @@ def extract_text_from_pdf(pdf_file):
             extracted_text += text + "\n"
     return extracted_text
 
-# Fixed fallback and backoff function
+# Fallback mechanism across supported models
 def generate_content_with_retry(client, prompt, max_retries=2):
-    """
-    Cycles through available model pools. If an error occurs on one model,
-    it waits briefly and attempts the next available model in the fallback array.
-    """
     last_error = None
     for model_id in FALLBACK_MODELS:
         for attempt in range(max_retries):
@@ -47,19 +43,17 @@ def generate_content_with_retry(client, prompt, max_retries=2):
                 return response.text
             except Exception as e:
                 last_error = e
-                # Pause 2 seconds before retrying or switching to the next model pool
                 time.sleep(2)
                 continue
                 
-    # If all models in FALLBACK_MODELS fail, raise the actual underlying error
     raise last_error
 
-# Main App Logic
+# Main Application Logic
 if api_key:
     try:
         client = genai.Client(api_key=api_key)
     except Exception as init_err:
-        st.error(f"Invalid API Key or initialization error: {init_err}")
+        st.error(f"Initialization Error: {init_err}")
         client = None
 
     if client:
