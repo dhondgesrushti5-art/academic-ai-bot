@@ -4,8 +4,8 @@ import time
 from google import genai
 from google.genai import types
 
-# Updated stable model endpoint
-MODEL_NAME = 'gemini-2.5-flash'
+# Priority list of model endpoints with separate capacity pools
+FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
 
 # Page Configuration
 st.set_page_config(page_title="Academic AI Assistant", page_icon="🎓", layout="wide")
@@ -30,20 +30,29 @@ def extract_text_from_pdf(pdf_file):
             extracted_text += text + "\n"
     return extracted_text
 
-# Robust helper function to handle 503 capacity limits
-def generate_content_with_retry(client, prompt, max_retries=5):
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=prompt,
-            )
-            return response.text
-        except Exception as e:
-            if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
-                time.sleep(4 * (attempt + 1))  # Progressive delays: 4s, 8s, 12s, 16s
-                continue
-            raise e
+# Helper function with automatic model fallback and retries
+def generate_content_with_retry(client, prompt, max_retries=2):
+    """
+    Attempts generation using primary model; if capacity limits occur, 
+    falls back automatically to alternative endpoints.
+    """
+    for model_id in FALLBACK_MODELS:
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model=model_id,
+                    contents=prompt,
+                )
+                return response.text
+            except Exception as e:
+                # Catch 503 capacity errors and attempt exponential backoff
+                if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                # If retries for this specific model fail, break to try the next model in FALLBACK_MODELS
+                break
+                
+    raise Exception("All Gemini model endpoints are currently at capacity.")
 
 # Main App Logic
 if api_key:
@@ -78,7 +87,7 @@ if api_key:
                         st.markdown("### Answer:")
                         st.write(answer)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please wait a few seconds and try clicking submit again.")
+                        st.error("The Gemini servers are experiencing heavy global demand. Please wait a few seconds and try clicking submit again.")
 
     # TAB 2: Study Planner
     with tab2:
@@ -95,7 +104,7 @@ if api_key:
                         plan = generate_content_with_retry(client, prompt)
                         st.markdown(plan)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please wait a few seconds and try clicking again.")
+                        st.error("The Gemini servers are experiencing heavy global demand. Please wait a few seconds and try clicking again.")
             else:
                 st.warning("Please specify a subject.")
 
@@ -113,7 +122,7 @@ if api_key:
                         quiz = generate_content_with_retry(client, prompt)
                         st.markdown(quiz)
                     except Exception as e:
-                        st.error("The Gemini server is experiencing high demand right now. Please wait a few seconds and try clicking again.")
+                        st.error("The Gemini servers are experiencing heavy global demand. Please wait a few seconds and try clicking again.")
             else:
                 st.warning("Please specify a topic.")
 else:
