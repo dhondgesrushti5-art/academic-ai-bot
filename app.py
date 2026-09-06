@@ -4,7 +4,7 @@ import time
 from google import genai
 from google.genai import types
 
-# Priority list of model endpoints with separate capacity pools
+# Priority sequence of Gemini models with separate capacity pools
 FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
 
 # Page Configuration
@@ -13,14 +13,14 @@ st.set_page_config(page_title="Academic AI Assistant", page_icon="🎓", layout=
 st.title("🎓 Academic AI Assistant")
 st.write("Upload study materials, ask questions, or generate study plans and quizzes!")
 
-# Sidebar - API Key Input
+# Sidebar - API Key Configuration
 with st.sidebar:
     st.header("⚙️ Configuration")
     api_key = st.text_input("Enter Gemini API Key:", type="password")
     st.markdown("---")
     st.info("Obtain a free key from [Google AI Studio](https://aistudio.google.com/).")
 
-# Helper function to extract text from PDF
+# Helper function to extract text from an uploaded PDF
 def extract_text_from_pdf(pdf_file):
     pdf_reader = pypdf.PdfReader(pdf_file)
     extracted_text = ""
@@ -30,12 +30,13 @@ def extract_text_from_pdf(pdf_file):
             extracted_text += text + "\n"
     return extracted_text
 
-# Helper function with automatic model fallback and retries
+# Robust helper function to handle 503 capacity limits across multiple model pools
 def generate_content_with_retry(client, prompt, max_retries=2):
     """
-    Attempts generation using primary model; if capacity limits occur, 
-    falls back automatically to alternative endpoints.
+    Cycles through available model pools and performs retries with backoff delays 
+    if capacity limits (503/UNAVAILABLE) occur.
     """
+    last_exception = None
     for model_id in FALLBACK_MODELS:
         for attempt in range(max_retries):
             try:
@@ -45,20 +46,19 @@ def generate_content_with_retry(client, prompt, max_retries=2):
                 )
                 return response.text
             except Exception as e:
-                # Catch 503 capacity errors and attempt exponential backoff
-                if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
-                    time.sleep(2 * (attempt + 1))
-                    continue
-                # If retries for this specific model fail, break to try the next model in FALLBACK_MODELS
-                break
+                last_exception = e
+                # Wait 2 seconds before retrying or switching endpoints
+                time.sleep(2)
+                continue
                 
-    raise Exception("All Gemini model endpoints are currently at capacity.")
+    # Raise the final exception if all models fail
+    raise last_exception
 
-# Main App Logic
+# Main App Execution
 if api_key:
     client = genai.Client(api_key=api_key)
     
-    # Feature Selection Tabs
+    # Feature Navigation Tabs
     tab1, tab2, tab3 = st.tabs(["📄 Document Q&A", "📅 Study Planner", "📝 Quiz Generator"])
     
     # TAB 1: Document Q&A
