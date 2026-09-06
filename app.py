@@ -4,7 +4,7 @@ import time
 from google import genai
 from google.genai import types
 
-# High-throughput stable model name
+# Updated stable model endpoint
 MODEL_NAME = 'gemini-2.5-flash'
 
 # Page Configuration
@@ -30,7 +30,7 @@ def extract_text_from_pdf(pdf_file):
             extracted_text += text + "\n"
     return extracted_text
 
-# Enhanced helper function with 5 retries and longer backoff delays
+# Robust helper function to handle 503 capacity limits
 def generate_content_with_retry(client, prompt, max_retries=5):
     for attempt in range(max_retries):
         try:
@@ -40,9 +40,8 @@ def generate_content_with_retry(client, prompt, max_retries=5):
             )
             return response.text
         except Exception as e:
-            # Catch 503 capacity errors or general API overload errors
             if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
-                time.sleep(3 * (attempt + 1))  # Progressive waits: 3s, 6s, 9s, 12s
+                time.sleep(4 * (attempt + 1))  # Progressive delays: 4s, 8s, 12s, 16s
                 continue
             raise e
 
